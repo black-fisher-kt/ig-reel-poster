@@ -2,10 +2,9 @@ name: Post Instagram Reel
 
 on:
   schedule:
-    - cron: '50 8 * * *'   # 2:20 PM IST - TEST
-    - cron: '30 5 * * *'   # 11:00 AM IST (UTC+5:30)
-    - cron: '30 14 * * *'  # 8:00 PM IST
-  workflow_dispatch:        # manual test ke liye
+    - cron: '30 5 * * *'    # 11:00 AM IST
+    - cron: '30 14 * * *'   # 8:00 PM IST
+  workflow_dispatch:
 
 jobs:
   post-reel:
@@ -20,12 +19,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - run: pip install requests
+      - name: Install dependencies
+        run: pip install instagrapi
 
       - name: Post Reel
         env:
-          IG_USER_ID:      ${{ secrets.IG_USER_ID }}
-          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USERNAME: ${{ secrets.IG_USERNAME }}
+          IG_PASSWORD: ${{ secrets.IG_PASSWORD }}
         run: python poster.py
 
       - name: Save log
