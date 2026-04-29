@@ -2,7 +2,7 @@ name: Post Instagram Reel
 
 on:
   schedule:
-    - cron: '45 8 * * *'   # 2:15 PM IST - TEST
+    - cron: '50 8 * * *'   # 2:20 PM IST - TEST
     - cron: '30 5 * * *'   # 11:00 AM IST (UTC+5:30)
     - cron: '30 14 * * *'  # 8:00 PM IST
   workflow_dispatch:        # manual test ke liye
