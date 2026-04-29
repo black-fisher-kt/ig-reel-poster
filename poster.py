@@ -1,12 +1,14 @@
-import os, json, random, requests, time
+import os, json, random, time
 from pathlib import Path
+from instagrapi import Client
+from instagrapi.exceptions import LoginRequired
 
-IG_USER_ID    = os.environ["IG_USER_ID"]
-ACCESS_TOKEN  = os.environ["IG_ACCESS_TOKEN"]
-REPO          = os.environ["GITHUB_REPOSITORY"]
-REELS_FOLDER  = "reels"
+USERNAME     = os.environ["IG_USERNAME"]
+PASSWORD     = os.environ["IG_PASSWORD"]
+REELS_FOLDER = "reels"
 CAPTIONS_FILE = "captions.txt"
-LOG_FILE      = "posted_log.json"
+LOG_FILE     = "posted_log.json"
+SESSION_FILE = "session.json"
 
 def load_captions():
     with open(CAPTIONS_FILE, "r", encoding="utf-8") as f:
@@ -29,37 +31,22 @@ def get_next_reel(log):
             return reel
     return None
 
-def get_video_url(filename):
-    return f"https://raw.githubusercontent.com/{REPO}/main/reels/{filename}"
-
-def create_container(video_url, caption):
-    r = requests.post(
-        f"https://graph.facebook.com/v19.0/{IG_USER_ID}/media",
-        data={"media_type": "REELS", "video_url": video_url,
-              "caption": caption, "access_token": ACCESS_TOKEN}
-    )
-    print(f"API Response: {r.status_code} - {r.text}")
-    r.raise_for_status()
-    return r.json()["id"]
-
-def wait_for_ready(cid):
-    params = {"fields": "status_code", "access_token": ACCESS_TOKEN}
-    for _ in range(18):
-        r = requests.get(f"https://graph.facebook.com/v19.0/{cid}", params=params)
-        status = r.json().get("status_code")
-        print(f"Status: {status}")
-        if status == "FINISHED": return True
-        if status == "ERROR": return False
-        time.sleep(10)
-    return False
-
-def publish(cid):
-    r = requests.post(
-        f"https://graph.facebook.com/v19.0/{IG_USER_ID}/media_publish",
-        data={"creation_id": cid, "access_token": ACCESS_TOKEN}
-    )
-    r.raise_for_status()
-    return r.json()["id"]
+def login():
+    cl = Client()
+    cl.delay_range = [1, 3]
+    if Path(SESSION_FILE).exists():
+        try:
+            cl.load_settings(SESSION_FILE)
+            cl.login(USERNAME, PASSWORD)
+            cl.get_timeline_feed()
+            print("✅ Session se login hua")
+            return cl
+        except LoginRequired:
+            print("⚠️ Session expired, fresh login...")
+    cl.login(USERNAME, PASSWORD)
+    cl.dump_settings(SESSION_FILE)
+    print("✅ Fresh login hua")
+    return cl
 
 def main():
     log      = load_log()
@@ -71,21 +58,15 @@ def main():
         return
 
     caption = random.choice(captions)
-    url     = get_video_url(reel.name)
-
     print(f"📹 Posting: {reel.name}")
     print(f"📝 Caption: {caption}")
 
-    cid = create_container(url, caption)
-    print(f"⏳ Container: {cid}")
+    cl = login()
+    media = cl.clip_upload(reel, caption)
+    print(f"✅ Posted! ID: {media.id}")
 
-    if wait_for_ready(cid):
-        post_id = publish(cid)
-        print(f"✅ Posted! ID: {post_id}")
-        log["posted"].append(reel.name)
-        save_log(log)
-    else:
-        print("❌ Failed — agli baar try hoga")
+    log["posted"].append(reel.name)
+    save_log(log)
 
 if __name__ == "__main__":
     main()
