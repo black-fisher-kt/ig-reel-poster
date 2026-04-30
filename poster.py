@@ -38,6 +38,7 @@ def create_container(video_url, caption):
         data={"media_type": "REELS", "video_url": video_url,
               "caption": caption, "access_token": ACCESS_TOKEN}
     )
+    print(f"API Response: {r.status_code} - {r.text}")
     r.raise_for_status()
     return r.json()["id"]
 
